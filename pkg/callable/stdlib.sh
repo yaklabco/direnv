@@ -1020,7 +1020,8 @@ layout_anaconda() {
     fi
   fi
 
-  local result="$("$conda" shell.bash activate "$env_loc")"
+  local result
+  result="$("$conda" shell.bash activate "$env_loc")"
   eval "$result"
 }
 
@@ -1188,7 +1189,8 @@ use_julia() {
 # Loads rbenv which add the ruby wrappers available on the PATH.
 #
 use_rbenv() {
-  local result="$(rbenv init -)"
+  local result
+  result="$(rbenv init -)"
   eval "$result"
 }
 
@@ -1356,7 +1358,8 @@ use_flake() {
   watch_file flake.nix
   watch_file flake.lock
   mkdir -p "$(direnv_layout_dir)"
-  local result="$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
+  local result
+  result="$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
   eval "$result"
   nix --extra-experimental-features "nix-command flakes" profile wipe-history --profile "$(direnv_layout_dir)/flake-profile"
 }
@@ -1444,10 +1447,12 @@ use_guix() {
     if [ -f channels.scm ]
     then
 	log_status "Using Guix version from channels.scm"
-	local result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
+        local result
+	result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
 	eval "$result"
     else
-	local result="$(guix shell "$@" --search-paths)"
+        local result
+	result="$(guix shell "$@" --search-paths)"
 	eval "$result"
     fi
 }
