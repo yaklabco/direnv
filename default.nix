@@ -1,7 +1,7 @@
 { buildGoApplication, lib, stdenv, bash }:
 buildGoApplication {
   pname = "direnv";
-  version = lib.fileContents ./version.txt;
+  version = lib.fileContents ./pkg/callable/version.txt;
   subPackages = [ "." ];
 
   src = ./.;
