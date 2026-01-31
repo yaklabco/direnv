@@ -10,8 +10,8 @@ import (
 	"time"
 
 	toml "github.com/BurntSushi/toml"
-	"github.com/direnv/direnv/v2/xdg"
 	"github.com/yaklabco/direnv/v2/internal/selfpath"
+	"github.com/yaklabco/direnv/v2/xdg"
 )
 
 // Config represents the direnv configuration and state.
@@ -243,6 +243,11 @@ func (config *Config) AllowDir() string {
 // DenyDir is the folder where all the "deny" files are stored.
 func (config *Config) DenyDir() string {
 	return filepath.Join(config.DataDir, "deny")
+}
+
+// AllowedRequiredDir is the folder where all the "allowed required" files are stored.
+func (config *Config) AllowedRequiredDir() string {
+	return filepath.Join(config.DataDir, "allowed-required")
 }
 
 // LoadedRC returns a RC file if any has been loaded

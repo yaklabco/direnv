@@ -264,6 +264,29 @@ dotenv_if_exists() {
   eval "$($direnv dotenv bash "$@")"
 }
 
+# Usage: require_allowed <filename> [<filename> ...]
+#
+# Requires that the specified files are approved before loading the .envrc.
+# If any files haven't been approved or have changed since approval, direnv
+# will prompt the user to run `direnv allow` again.
+#
+# This helps prevent supply chain attacks by ensuring that changes to
+# critical files (like pixi.toml, package.json, etc.) require explicit
+# user approval.
+#
+# Example:
+#
+#    require_allowed pixi.toml pixi.lock
+#
+require_allowed() {
+  # Also watch these files for changes
+  watch_file "$@"
+
+  # Check if files are in the allowed-required DB
+  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
+  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
+}
+
 # Usage: user_rel_path <abs_path>
 #
 # Transforms an absolute path <abs_path> into a user-relative path if
@@ -1292,12 +1315,15 @@ use_nodenv() {
 use_nix() {
   local -A values_to_restore=(
     ["NIX_BUILD_TOP"]=${NIX_BUILD_TOP:-__UNSET__}
+    ["NIX_ATTRS_JSON_FILE"]=${NIX_ATTRS_JSON_FILE:-__UNSET__}
+    ["NIX_ATTRS_SH_FILE"]=${NIX_ATTRS_SH_FILE:-__UNSET__}
     ["TMP"]=${TMP:-__UNSET__}
     ["TMPDIR"]=${TMPDIR:-__UNSET__}
     ["TEMP"]=${TEMP:-__UNSET__}
     ["TEMPDIR"]=${TEMPDIR:-__UNSET__}
     ["terminfo"]=${terminfo:-__UNSET__}
   )
+  # shellcheck disable=SC2086
   direnv_load nix-shell --show-trace "$@" --run "$(join_args $direnv dump)"
   for key in "${!values_to_restore[@]}"; do
     local value=${values_to_restore[$key]}
@@ -1336,18 +1362,19 @@ use_flake() {
 # Load environment variables from `flox activate`. By default uses the .flox
 # directory in the current directory.
 #
-# You can specify a remote environment with '--remote=<owner>/<name>' where
-# <owner>/<name> is the FloxHub environment name (e.g. `use_flox --remote=myorg/env`).
+# You can specify a FloxHub environment with '--reference=<owner>/<name>' 
+# or `-r=<owner>/<name>`, where <owner>/<name>
+# is the FloxHub environment name (e.g. `use_flox '--reference=myorg/env`).
 #
-# The '--trust' flag can be added to automatically trust remote environments:
-#    use_flox --trust --remote=myorg/env
+# The '--trust' flag can be added to automatically trust FloxHub environments:
+#    use_flox --trust '--reference=myorg/env
 #
 # An alternate local environment directory can be specified with '--dir=<path>',
 # where <path> contains a .flox directory.
 #
 # Example:
 #
-#    use_flox --remote=acme/production
+#    use_flox --reference=acme/production
 #    use_flox --dir=/path/to/env
 #
 # Note: Custom commands are not supported since flox activate is used for loading.
@@ -1384,6 +1411,7 @@ function use_flox() {
         return 1
     fi
 
+    # shellcheck disable=SC2086
     direnv_load flox activate "${args[@]}" -- $direnv dump
 
     if [[ ${#args[@]} -eq 0 ]]; then
@@ -1498,6 +1526,7 @@ __main__() {
   exec 1>&2
 
   # shellcheck disable=SC2317
+  # shellcheck disable=SC2329
   __dump_at_exit() {
     local ret=$?
     $direnv dump json "" >&3
