@@ -33,11 +33,20 @@ func cmdHookAction(_ Env, args []string) (err error) {
 		target = args[1]
 	}
 
-	selfPath := selfpath.SelfPath(args[0])
+	// Prefer DIRENV_EXE_PATH if set
+	selfPath := os.Getenv("DIRENV_EXE_PATH")
+	if selfPath == "" {
+		selfPath = selfpath.SelfPath(args[0])
+	}
 	firstMatchIndices := hookSubCommandRegexp.FindStringIndex(selfPath)
 	if firstMatchIndices != nil {
 		selfPath = selfPath[:firstMatchIndices[0]]
 	}
+
+	// selfPath, err := os.Executable()
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Convert Windows path if needed
 	selfPath = strings.ReplaceAll(selfPath, "\\", "/")

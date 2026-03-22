@@ -101,7 +101,13 @@ func LoadConfig(env Env) (config *Config, err error) {
 		return
 	}
 
-	exePath := selfpath.SelfPath(os.Args[0])
+	var exePath string
+	// Check env variable first
+	if envPath := os.Getenv("DIRENV_EXE_PATH"); envPath != "" {
+		exePath = envPath
+	} else {
+		exePath = selfpath.SelfPath(os.Args[0])
+	}
 
 	// Fix for mingsys
 	exePath = strings.ReplaceAll(exePath, "\\", "/")
