@@ -21,12 +21,12 @@ var CmdHook = &Cmd{
 	Name:   "hook",
 	Desc:   "Used to setup the shell hook",
 	Args:   []string{"SHELL"},
-	Action: actionSimple(cmdHookAction),
+	Action: actionWithConfig(cmdHookAction),
 }
 
 var hookSubCommandRegexp = regexp.MustCompile(`\s+hook`)
 
-func cmdHookAction(_ Env, args []string) (err error) {
+func cmdHookAction(_ Env, args []string, config *Config) (err error) {
 	var target string
 
 	if len(args) > 1 {
