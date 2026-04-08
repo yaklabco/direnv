@@ -26,7 +26,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6.0.0
       with:
-        go-version: '1.24'
+        go-version: '1.25.9'
         cache: true
       id: go
 
@@ -34,7 +34,7 @@ jobs:
       if: runner.os != 'Windows'
       uses: actions/setup-python@v6.0.0
       with:
-        python-version: "3.9"
+        python-version: "3.12"
       id: python
 
     - name: Build
