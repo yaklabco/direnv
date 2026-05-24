@@ -41,6 +41,14 @@ func cmdHookAction(_ Env, args []string) (err error) {
 
 	// Convert Windows path if needed
 	selfPath = strings.ReplaceAll(selfPath, "\\", "/")
+
+	// Balance quotes in the path if needed, otherwise the generated hook will be broken.
+	for _, quoteStr := range []string{`"`, `'`} {
+		if strings.Count(selfPath, quoteStr)%2 != 0 {
+			selfPath = selfPath + quoteStr
+		}
+	}
+
 	ctx := HookContext{selfPath}
 
 	shell := DetectShell(target)
