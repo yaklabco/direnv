@@ -17,6 +17,10 @@ var CmdReload = &Cmd{
 			return fmt.Errorf(".envrc not found")
 		}
 
+		if foundRC.Allowed() == Denied {
+			return fmt.Errorf(notAllowed, foundRC.Path(), config.SelfPath)
+		}
+
 		return foundRC.Touch()
 	}),
 }
