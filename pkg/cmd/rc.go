@@ -220,7 +220,7 @@ func (rc *RC) Load(previousEnv Env) (newEnv Env, err error) {
 	// Abort if the file is not allowed
 	switch rc.Allowed() {
 	case NotAllowed:
-		err = fmt.Errorf(notAllowed, rc.Path(), os.Args[0])
+		err = fmt.Errorf(notAllowed, rc.Path(), rc.config.SelfPath)
 		return
 	case Allowed:
 	case Denied:

@@ -18,7 +18,7 @@ var CmdReload = &Cmd{
 		}
 
 		if foundRC.Allowed() == Denied {
-			return fmt.Errorf(notAllowed, foundRC.Path())
+			return fmt.Errorf(notAllowed, foundRC.Path(), config.SelfPath)
 		}
 
 		return foundRC.Touch()
