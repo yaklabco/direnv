@@ -69,6 +69,16 @@ test_name "dotenv / dotenv_if_exists (named pipe / FIFO)"
   # shellcheck disable=SC2064
   trap '[[ -n $writer_pid ]] && kill "$writer_pid" 2>/dev/null; rm -rf "$workdir"' EXIT
 
+  # Reap the background writer without ever hanging the suite: a writer blocked on
+  # opening the FIFO for write (e.g. if the reader never opened it) is bounded-waited,
+  # then killed. The EXIT trap is the final backstop.
+  reap_writer() {
+    for _ in $(seq 1 50); do kill -0 "$writer_pid" 2>/dev/null || break; sleep 0.1; done
+    kill "$writer_pid" 2>/dev/null || true
+    wait "$writer_pid" 2>/dev/null || true
+    writer_pid=""
+  }
+
   cd "$workdir"
 
   # Positive control: watch_file is functional in this harness, so the no-watch
@@ -88,7 +98,7 @@ test_name "dotenv / dotenv_if_exists (named pipe / FIFO)"
   ( echo "export FOO=bar" > fifo.env ) &
   writer_pid=$!
   dotenv fifo.env
-  wait "$writer_pid"; writer_pid=""
+  reap_writer
   [[ $FOO = bar ]]
   # ... and must NOT add the FIFO to the watch list: a FIFO's mtime changes on
   # every read, which would otherwise force a reload on every prompt.
@@ -100,7 +110,7 @@ test_name "dotenv / dotenv_if_exists (named pipe / FIFO)"
   ( echo "export FOO=baz" > fifo.env ) &
   writer_pid=$!
   dotenv_if_exists fifo.env
-  wait "$writer_pid"; writer_pid=""
+  reap_writer
   [[ $FOO = baz ]]
   assert_eq "${DIRENV_WATCHES:-}" "$before"
 )

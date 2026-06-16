@@ -244,7 +244,7 @@ dotenv() {
   # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
   # Never watch a named pipe: its mtime changes every time it is read, which would
   # force a reload on every prompt.
-  if [[ ! -p $path ]]; then
+  if [[ -f $path || ! -e $path ]]; then
     watch_file "$path"
   fi
   if ! [[ -f $path || -p $path ]]; then
@@ -269,7 +269,7 @@ dotenv_if_exists() {
   # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
   # Never watch a named pipe: its mtime changes every time it is read, which would
   # force a reload on every prompt.
-  if [[ ! -p $path ]]; then
+  if [[ -f $path || ! -e $path ]]; then
     watch_file "$path"
   fi
   if ! [[ -f $path || -p $path ]]; then
