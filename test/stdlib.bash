@@ -60,6 +60,51 @@ test_name dotenv_if_exists
   [[ $FOO = bar ]]
 )
 
+test_name "dotenv / dotenv_if_exists (named pipe / FIFO)"
+(
+  load_stdlib
+
+  workdir=$(mktemp -d)
+  writer_pid=""
+  # shellcheck disable=SC2064
+  trap '[[ -n $writer_pid ]] && kill "$writer_pid" 2>/dev/null; rm -rf "$workdir"' EXIT
+
+  cd "$workdir"
+
+  # Positive control: watch_file is functional in this harness, so the no-watch
+  # assertions below are meaningful (watching a regular file changes DIRENV_WATCHES).
+  before=${DIRENV_WATCHES:-}
+  : > regular.txt
+  watch_file regular.txt
+  [[ ${DIRENV_WATCHES:-} != "$before" ]] || { echo "watch_file did not record a regular file"; return 1; }
+
+  # A ".env" provided as a named pipe (FIFO) - as mounted by secrets managers
+  # like 1Password Environments to inject secrets on read, without writing the
+  # secret contents to disk. The writer blocks until dotenv opens the pipe.
+  mkfifo fifo.env
+
+  # dotenv loads the FIFO ...
+  before=${DIRENV_WATCHES:-}
+  ( echo "export FOO=bar" > fifo.env ) &
+  writer_pid=$!
+  dotenv fifo.env
+  wait "$writer_pid"; writer_pid=""
+  [[ $FOO = bar ]]
+  # ... and must NOT add the FIFO to the watch list: a FIFO's mtime changes on
+  # every read, which would otherwise force a reload on every prompt.
+  assert_eq "${DIRENV_WATCHES:-}" "$before"
+
+  # dotenv_if_exists shares the same gate, so it must load a FIFO too.
+  unset FOO
+  before=${DIRENV_WATCHES:-}
+  ( echo "export FOO=baz" > fifo.env ) &
+  writer_pid=$!
+  dotenv_if_exists fifo.env
+  wait "$writer_pid"; writer_pid=""
+  [[ $FOO = baz ]]
+  assert_eq "${DIRENV_WATCHES:-}" "$before"
+)
+
 test_name find_up
 (
   load_stdlib

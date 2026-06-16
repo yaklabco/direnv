@@ -229,7 +229,10 @@ realpath.absolute() {
 
 # Usage: dotenv [<dotenv>]
 #
-# Loads a ".env" file into the current environment
+# Loads a ".env" file into the current environment. The file may be a regular
+# file or a named pipe (FIFO), e.g. one mounted by a secrets manager such as
+# 1Password Environments to inject secrets without writing the secret contents
+# to disk.
 #
 dotenv() {
   local path=${1:-}
@@ -238,7 +241,12 @@ dotenv() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
+  # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
+  # Never watch a named pipe: its mtime changes every time it is read, which would
+  # force a reload on every prompt.
+  if [[ ! -p $path ]]; then
+    watch_file "$path"
+  fi
   if ! [[ -f $path || -p $path ]]; then
     log_error ".env at $path not found"
     return 1
@@ -248,7 +256,8 @@ dotenv() {
 
 # Usage: dotenv_if_exists [<filename>]
 #
-# Loads a ".env" file into the current environment, but only if it exists.
+# Loads a ".env" file into the current environment, but only if it exists. The
+# file may be a regular file or a named pipe (FIFO).
 #
 dotenv_if_exists() {
   local path=${1:-}
@@ -257,7 +266,12 @@ dotenv_if_exists() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
+  # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
+  # Never watch a named pipe: its mtime changes every time it is read, which would
+  # force a reload on every prompt.
+  if [[ ! -p $path ]]; then
+    watch_file "$path"
+  fi
   if ! [[ -f $path || -p $path ]]; then
     return
   fi
