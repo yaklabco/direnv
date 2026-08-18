@@ -87,10 +87,12 @@ func (sh fish) export(key, value string) string {
 	if key == "PATH" {
 		var command strings.Builder
 		command.WriteString("set -x -g PATH")
-		for path := range strings.SplitSeq(value, ":") {
-			command.WriteString(" " + sh.escape(path))
+		for _, path := range strings.Split(value, ":") {
+			command.WriteString(" ")
+			command.WriteString(sh.escape(path))
 		}
-		return command.String() + ";"
+		command.WriteString(";")
+		return command.String()
 	}
 	return "set -x -g " + sh.escape(key) + " " + sh.escape(value) + ";"
 }
@@ -101,24 +103,29 @@ func (sh fish) unset(key string) string {
 
 func (sh fish) escape(str string) string {
 	in := []byte(str)
-	out := "'"
+	var out strings.Builder
+	out.Grow(len(in) + 2)
+	out.WriteByte(SINGLE_QUOTE)
 	i := 0
 	l := len(in)
 
 	hex := func(char byte) {
-		out += fmt.Sprintf("'\\X%02x'", char)
+		fmt.Fprintf(&out, "'\\X%02x'", char)
 	}
 
 	backslash := func(char byte) {
-		out += string([]byte{BACKSLASH, char})
+		out.WriteByte(BACKSLASH)
+		out.WriteByte(char)
 	}
 
 	escaped := func(str string) {
-		out += "'" + str + "'"
+		out.WriteByte(SINGLE_QUOTE)
+		out.WriteString(str)
+		out.WriteByte(SINGLE_QUOTE)
 	}
 
 	literal := func(char byte) {
-		out += string([]byte{char})
+		out.WriteByte(char)
 	}
 
 	for i < l {
@@ -146,7 +153,7 @@ func (sh fish) escape(str string) string {
 		i++
 	}
 
-	out += "'"
+	out.WriteByte(SINGLE_QUOTE)
 
-	return out
+	return out.String()
 }
