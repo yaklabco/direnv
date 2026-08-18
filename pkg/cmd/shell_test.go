@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -10,6 +11,21 @@ func TestBashEscape(t *testing.T) {
 	assertEqual(t, `$'foo\r\n\tbar'`, BashEscape("foo\r\n\tbar"))
 	assertEqual(t, `$'foo bar'`, BashEscape("foo bar"))
 	assertEqual(t, `$'\xc3\xa9'`, BashEscape("é"))
+}
+
+func BenchmarkBashEscape(b *testing.B) {
+	var input strings.Builder
+	for input.Len() < 60000 {
+		input.WriteString("/usr/local/lib/some-package-1.2.3/bin:")
+		if input.Len()%7 == 0 {
+			input.WriteString("some 'quoted' $value `with` *chars* ")
+		}
+	}
+	str := input.String()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		BashEscape(str)
+	}
 }
 
 func TestShellDetection(t *testing.T) {
