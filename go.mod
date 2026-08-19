@@ -1,6 +1,6 @@
 module github.com/yaklabco/direnv/v2
 
-go 1.25.13
+go 1.25.14
 
 require (
 	github.com/BurntSushi/toml v1.6.0
