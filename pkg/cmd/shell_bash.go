@@ -16,7 +16,7 @@ _direnv_hook() {
   vars="$({{.SelfPath}} export bash)";
   trap -- '' SIGINT;
   eval "$vars";
-  trap - SIGINT;
+  eval "${previous_sigint_trap:-trap - SIGINT}";
   return $previous_exit_status;
 };
 if [[ ''${BLE_VERSION-} && _ble_version -ge 400 ]]; then
