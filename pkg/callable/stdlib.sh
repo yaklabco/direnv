@@ -241,12 +241,7 @@ dotenv() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
-  # Never watch a named pipe: its mtime changes every time it is read, which would
-  # force a reload on every prompt.
-  if [[ -f $path || ! -e $path ]]; then
-    watch_file "$path"
-  fi
+  watch_file "$path"
   if ! [[ -f $path || -p $path ]]; then
     log_error ".env at $path not found"
     return 1
@@ -266,12 +261,7 @@ dotenv_if_exists() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  # Watch regular files (and not-yet-existing paths) so changes trigger a reload.
-  # Never watch a named pipe: its mtime changes every time it is read, which would
-  # force a reload on every prompt.
-  if [[ -f $path || ! -e $path ]]; then
-    watch_file "$path"
-  fi
+  watch_file "$path"
   if ! [[ -f $path || -p $path ]]; then
     return
   fi
