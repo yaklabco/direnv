@@ -1,30 +1,33 @@
-{
-  stdenv,
-  pkgs,
-  gomod2nix,
-  git,
-  git-extras,
-  gnumake,
-  go,
-  go-md2man,
-  gox,
-  bashInteractive,
-  elvish,
-  fish,
-  tcsh,
-  zsh,
-  powershell,
-  murex,
-  golangci-lint,
-  python3,
-  ruby,
-  shellcheck,
-  shfmt,
-  cacert,
+{ stdenv
+, pkgs
+, mkGoEnv
+, gomod2nix
+, git
+, git-extras
+, gnumake
+, go
+, go-md2man
+, gox
+, bashInteractive
+, elvish
+, fish
+, tcsh
+, zsh
+, powershell
+, murex
+, golangci-lint
+, python3
+, ruby
+, shellcheck
+, shfmt
+, cacert
 }:
 stdenv.mkDerivation {
   name = "shell";
   nativeBuildInputs = with pkgs; [
+
+    (mkGoEnv { pwd = ./.; go = go; })
+
     go
 
     # Build
@@ -32,6 +35,7 @@ stdenv.mkDerivation {
     git-extras # for git-changelog
     gnumake
     go-md2man
+    gox
     gomod2nix
 
     # Shells
@@ -43,7 +47,8 @@ stdenv.mkDerivation {
     powershell
     murex
 
-    golangci-lint
+    # force golangci-lint to be built against 1.24
+    (golangci-lint.override { buildGoModule = buildGo124Module; } )
     python3
     ruby
     shellcheck
