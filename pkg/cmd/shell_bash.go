@@ -13,6 +13,7 @@ var Bash Shell = bash{}
 const bashHook = `
 _direnv_hook() {
   local previous_exit_status=$?;
+  local previous_sigint_trap="$(trap -p SIGINT)";
   vars="$({{.SelfPath}} export bash)";
   trap -- '' SIGINT;
   eval "$vars";
