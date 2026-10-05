@@ -87,12 +87,10 @@ func (sh fish) export(key, value string) string {
 	if key == "PATH" {
 		var command strings.Builder
 		command.WriteString("set -x -g PATH")
-		for _, path := range strings.Split(value, ":") {
-			command.WriteString(" ")
-			command.WriteString(sh.escape(path))
+		for path := range strings.SplitSeq(value, ":") {
+			command.WriteString(" " + sh.escape(path))
 		}
-		command.WriteString(";")
-		return command.String()
+		return command.String() + ";"
 	}
 	return "set -x -g " + sh.escape(key) + " " + sh.escape(value) + ";"
 }
