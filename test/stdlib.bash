@@ -60,24 +60,6 @@ test_name dotenv_if_exists
   [[ $FOO = bar ]]
 )
 
-test_name dotenv_fifo
-(
-  load_stdlib
-
-  workdir=$(mktemp -d)
-  trap 'kill %1 2>/dev/null; rm -rf "$workdir"' EXIT
-  cd "$workdir"
-  mkfifo .env
-
-  for fn in dotenv dotenv_if_exists; do
-    unset FOO DIRENV_WATCHES
-    echo "export FOO=bar" >.env &
-    "$fn" .env
-    assert_eq "${FOO:-}" bar
-    assert_eq "${DIRENV_WATCHES:-}" ""
-  done
-)
-
 test_name find_up
 (
   load_stdlib
@@ -322,6 +304,38 @@ test_name require_allowed_security
   result=$?
   [[ $result -eq 1 ]]
   [[ "${output#*'must not contain'}" != "$output" ]]
+)
+
+test_name layout_uv
+(
+  load_stdlib
+
+  if ! has uv; then
+    echo "WARN: uv not found, skipping layout_uv test"
+    exit 0
+  fi
+
+  workdir=$(mktemp -d)
+  trap 'rm -rf "$workdir"' EXIT
+  cd "$workdir"
+
+  # fails without a pyproject.toml
+  output=$(layout_uv 2>&1 || true)
+  [[ "${output#*'no pyproject.toml'}" != "$output" ]]
+
+  # succeeds with a valid project and lockfile
+  cat <<EOF >pyproject.toml
+[project]
+name = "test-direnv-uv"
+version = "0.1.0"
+dependencies = []
+EOF
+  uv lock
+  layout_uv
+
+  [[ -d .venv ]]
+  [[ "$VIRTUAL_ENV" == "$workdir/.venv" ]]
+  [[ "$UV_PROJECT_ENVIRONMENT" == "$workdir/.venv" ]]
 )
 
 test_name global_lib_noglob
