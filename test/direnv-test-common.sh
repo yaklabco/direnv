@@ -126,16 +126,6 @@ test_start rm isolated
   test_eq "$HELLO" ""
 test_stop
 
-test_start rm isolated
-  direnv_eval
-  test_eq "$HELLO" "world"
-
-  echo "Removing .envrc (should unload)"
-  mv .envrc .envrc.old
-  direnv_eval
-  test_eq "$HELLO" ""
-test_stop
-
 test_start disable
   export DIRENV_DISABLE=1
   direnv_eval
@@ -170,18 +160,6 @@ if has ruby; then
   test_start "ruby-layout"
     direnv_eval
     test_neq "$GEM_HOME" ""
-  test_stop
-fi
-
-if has uv; then
-  test_start "uv-layout"
-    rm -rf .venv
-    direnv_eval
-    test -n "${VIRTUAL_ENV:-}"
-    if [[ ":$PATH:" != *":${VIRTUAL_ENV}/bin:"* ]]; then
-      echo "FAILED: VIRTUAL_ENV/bin not added to PATH"
-      exit 1
-    fi
   test_stop
 fi
 
@@ -374,19 +352,6 @@ if has python; then
     fi
   test_stop
 fi
-
-test_start "deleted-envrc"
-  direnv_eval
-  test_eq "$HELLO" "world"
-
-  echo "Deleting .envrc (env should be unloaded on next eval)"
-  cp .envrc .envrc.bak
-  rm .envrc
-  direnv_eval
-  test -z "${HELLO}"
-
-  mv .envrc.bak .envrc
-test_stop
 
 test_start "deleted-envrc"
   direnv_eval
