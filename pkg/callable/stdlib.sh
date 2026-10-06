@@ -289,99 +289,9 @@ require_allowed() {
 
   # Check if files are in the allowed-required DB
   # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
+  local __direnv_out
+  __direnv_out="$($direnv check-required bash "$PWD/.envrc" "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: require_allowed <filename> [<filename> ...]
@@ -1027,7 +937,9 @@ layout_pixi() {
   fi
   watch_file pixi.lock
   require_allowed pixi.lock
-  eval "$(pixi shell-hook "$@")"
+  local __direnv_out
+  __direnv_out="$(pixi shell-hook "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: layout python <python_exe>
