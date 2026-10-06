@@ -1603,6 +1603,26 @@ use_guix() {
     watch_file guix.scm
     watch_file manifest.scm
     watch_file channels.scm
+
+    # Containers cannot run the host direnv binary, so keep using --search-paths.
+    for arg in "$@"; do
+	case "$arg" in
+	--container | --emulate-fhs | -[CF]* | -[!-]*[CF]*)
+	    local result
+	    if [ -f channels.scm ]
+	    then
+		log_status "Using Guix version from channels.scm"
+		result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
+	    else
+		result="$(guix shell "$@" --search-paths)"
+	    fi
+	    eval "$result"
+	    return
+	    ;;
+	esac
+    done
+
+    # direnv_load needs this path preserved so direnv dump can write its output.
     if [ -f channels.scm ]
     then
 	log_status "Using Guix version from channels.scm"
