@@ -229,10 +229,7 @@ realpath.absolute() {
 
 # Usage: dotenv [<dotenv>]
 #
-# Loads a ".env" file into the current environment. The file may be a regular
-# file or a named pipe (FIFO), e.g. one mounted by a secrets manager such as
-# 1Password Environments to inject secrets without writing the secret contents
-# to disk.
+# Loads a ".env" file into the current environment
 #
 dotenv() {
   local path=${1:-}
@@ -1617,30 +1614,16 @@ use_guix() {
     watch_file guix.scm
     watch_file manifest.scm
     watch_file channels.scm
-
-    # Containers cannot run the host direnv binary, so keep using --search-paths.
-    for arg in "$@"; do
-	case "$arg" in
-	--container | -*C*)
-	    if [ -f channels.scm ]
-	    then
-		log_status "Using Guix version from channels.scm"
-		eval "$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
-	    else
-		eval "$(guix shell "$@" --search-paths)"
-	    fi
-	    return
-	    ;;
-	esac
-    done
-
-    # direnv_load needs this path preserved so direnv dump can write its output.
     if [ -f channels.scm ]
     then
 	log_status "Using Guix version from channels.scm"
-	direnv_load guix time-machine -C channels.scm -- shell "$@" --preserve=^DIRENV_DUMP_FILE_PATH$ -- "$direnv" dump
+	local result
+	result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
+	eval "$result"
     else
-	direnv_load guix shell "$@" --preserve=^DIRENV_DUMP_FILE_PATH$ -- "$direnv" dump
+	local result
+	result="$(guix shell "$@" --search-paths)"
+	eval "$result"
     fi
 }
 
