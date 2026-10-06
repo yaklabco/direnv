@@ -426,6 +426,29 @@ require_allowed() {
   eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
 }
 
+# Usage: require_allowed <filename> [<filename> ...]
+#
+# Requires that the specified files are approved before loading the .envrc.
+# If any files haven't been approved or have changed since approval, direnv
+# will prompt the user to run `direnv allow` again.
+#
+# This helps prevent supply chain attacks by ensuring that changes to
+# critical files (like pixi.toml, package.json, etc.) require explicit
+# user approval.
+#
+# Example:
+#
+#    require_allowed pixi.toml pixi.lock
+#
+require_allowed() {
+  # Also watch these files for changes
+  watch_file "$@"
+
+  # Check if files are in the allowed-required DB
+  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
+  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
+}
+
 # Usage: user_rel_path <abs_path>
 #
 # Transforms an absolute path <abs_path> into a user-relative path if
@@ -1540,8 +1563,7 @@ use_nix() {
     ["TEMPDIR"]=${TEMPDIR:-__UNSET__}
     ["terminfo"]=${terminfo:-__UNSET__}
   )
-  # shellcheck disable=SC2086
-  direnv_load nix-shell --show-trace "$@" --run "$(join_args $direnv dump)"
+  direnv_load nix-shell --show-trace "$@" --run "$(join_args "$direnv" dump)"
   for key in "${!values_to_restore[@]}"; do
     local value=${values_to_restore[$key]}
     if [[ $value == __UNSET__ ]]; then
@@ -1573,8 +1595,6 @@ use_flake() {
   local result
   result="$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
   eval "$result"
-  # refresh the gcroot mtime so age-based GC (e.g. nh clean) keeps it; -h because the target is in the read-only store
-  touch -h "$(direnv_layout_dir)/flake-profile"
   nix --extra-experimental-features "nix-command flakes" profile wipe-history --profile "$(direnv_layout_dir)/flake-profile"
 }
 
@@ -1632,8 +1652,7 @@ function use_flox() {
         return 1
     fi
 
-    # shellcheck disable=SC2086
-    direnv_load flox activate "${args[@]}" -- $direnv dump
+    direnv_load flox activate "${args[@]}" -c "$direnv dump"
 
     if [[ ${#args[@]} -eq 0 ]]; then
         watch_dir "$flox_dir/env/"
@@ -1655,7 +1674,6 @@ function use_flox() {
 # If a channels.scm is available, `guix time-machine -C channels.scm`
 # is automatically invoked before creating the shell.
 use_guix() {
-    local arg
     watch_file guix.scm
     watch_file manifest.scm
     watch_file channels.scm
