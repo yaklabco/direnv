@@ -12,12 +12,7 @@ var Zsh Shell = zsh{}
 // completion. It follows zsh's Functions/Chpwd/chpwd_recent_dirs.
 const zshHook = `
 _direnv_hook() {
-  setopt localoptions localtraps extendedglob
-  if [[ ! -o interactive  || $ZSH_SUBSHELL -ne 0 || \
-    ( -n $ZSH_EVAL_CONTEXT && \
-    $ZSH_EVAL_CONTEXT != toplevel(:[a-z]#func|)# ) ]]; then
-    return
-  fi
+  setopt localoptions localtraps
   vars="$({{.SelfPath}} export zsh)"
   trap -- '' SIGINT
   eval "$vars"
