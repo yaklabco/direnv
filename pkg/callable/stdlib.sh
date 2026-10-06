@@ -229,10 +229,7 @@ realpath.absolute() {
 
 # Usage: dotenv [<dotenv>]
 #
-# Loads a ".env" file into the current environment. The file may be a regular
-# file or a named pipe (FIFO), e.g. one mounted by a secrets manager such as
-# 1Password Environments to inject secrets without writing the secret contents
-# to disk.
+# Loads a ".env" file into the current environment
 #
 dotenv() {
   local path=${1:-}
@@ -241,7 +238,8 @@ dotenv() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
+  # reading a FIFO changes its mtime, so watching it reloads on every prompt
+  [[ -p $path ]] || watch_file "$path"
   if ! [[ -f $path || -p $path ]]; then
     log_error ".env at $path not found"
     return 1
@@ -253,8 +251,7 @@ dotenv() {
 
 # Usage: dotenv_if_exists [<filename>]
 #
-# Loads a ".env" file into the current environment, but only if it exists. The
-# file may be a regular file or a named pipe (FIFO).
+# Loads a ".env" file into the current environment, but only if it exists.
 #
 dotenv_if_exists() {
   local path=${1:-}
@@ -263,7 +260,7 @@ dotenv_if_exists() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
+  [[ -p $path ]] || watch_file "$path"
   if ! [[ -f $path || -p $path ]]; then
     return
   fi
