@@ -268,7 +268,7 @@ func (rc *RC) Load(previousEnv Env) (newEnv Env, err error) {
 	arg := fmt.Sprintf(
 		`%seval "$(%s stdlib)" && __main__ %s %s`,
 		prelude,
-		direnv,
+		BashEscape(direnv),
 		fn,
 		BashEscape(slashSeparatedPath),
 	)
