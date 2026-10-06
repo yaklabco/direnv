@@ -314,52 +314,6 @@ require_allowed() {
 
   # Check if files are in the allowed-required DB
   # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$($direnv check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$($direnv check-required bash "$PWD/.envrc" "$@")"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
   local __direnv_out
   __direnv_out="$($direnv check-required bash "$PWD/.envrc" "$@")"
   eval "$__direnv_out"
@@ -1603,26 +1557,6 @@ use_guix() {
     watch_file guix.scm
     watch_file manifest.scm
     watch_file channels.scm
-
-    # Containers cannot run the host direnv binary, so keep using --search-paths.
-    for arg in "$@"; do
-	case "$arg" in
-	--container | --emulate-fhs | -[CF]* | -[!-]*[CF]*)
-	    local result
-	    if [ -f channels.scm ]
-	    then
-		log_status "Using Guix version from channels.scm"
-		result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
-	    else
-		result="$(guix shell "$@" --search-paths)"
-	    fi
-	    eval "$result"
-	    return
-	    ;;
-	esac
-    done
-
-    # direnv_load needs this path preserved so direnv dump can write its output.
     if [ -f channels.scm ]
     then
 	log_status "Using Guix version from channels.scm"
