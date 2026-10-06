@@ -51,7 +51,7 @@ GO_LDFLAGS =
 ifeq ($(shell uname), Darwin)
   ifneq ($(CGO_ENABLED), 0)
 	# Fixes DYLD_INSERT_LIBRARIES issues
-	# See https://github.com/yaklabco/direnv/issues/194
+	# See https://github.com/direnv/direnv/issues/194
 	GO_LDFLAGS += -linkmode=external
   endif
 endif

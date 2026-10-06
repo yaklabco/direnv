@@ -84,10 +84,6 @@ $ echo ${FOO-nope}
 nope
 ```
 
-Some stdlib functions store files in `.direnv/`. Add `.direnv/` to your
-`.gitignore`. For local overrides that you do not commit, put
-`source_env_if_exists .envrc.local` in `.envrc` and also ignore `.envrc.local`.
-
 ### The stdlib
 
 Exporting variables by hand is a bit repetitive so direnv provides a set of
@@ -179,7 +175,7 @@ make test
 Here is a list of projects you might want to look into if you are using direnv.
 
 * [starship](https://starship.rs/) - A cross-shell prompt.
-* [Projects for Nix integration](https://github.com/yaklabco/direnv/wiki/Nix) - choose from one of a variety of projects offering improvements over Direnv's built-in `use_nix` implementation.
+* [Projects for Nix integration](https://github.com/direnv/direnv/wiki/Nix) - choose from one of a variety of projects offering improvements over Direnv's built-in `use_nix` implementation.
 
 ## Related projects
 

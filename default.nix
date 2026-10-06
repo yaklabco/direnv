@@ -7,7 +7,7 @@
 }:
 buildGoApplication {
   pname = "direnv";
-  version = lib.fileContents ./pkg/callable/version.txt;
+  version = lib.fileContents ./version.txt;
   subPackages = [ "." ];
 
   src = lib.fileset.toSource {
