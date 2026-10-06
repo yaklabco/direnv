@@ -8,8 +8,6 @@ type zsh struct{}
 // Zsh adds support for the venerable Z shell.
 var Zsh Shell = zsh{}
 
-// The guard skips the hook when chpwd fires outside the top level, e.g. from
-// completion. It follows zsh's Functions/Chpwd/chpwd_recent_dirs.
 const zshHook = `
 _direnv_hook() {
   setopt localoptions localtraps

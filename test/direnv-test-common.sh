@@ -126,6 +126,16 @@ test_start rm isolated
   test_eq "$HELLO" ""
 test_stop
 
+test_start rm isolated
+  direnv_eval
+  test_eq "$HELLO" "world"
+
+  echo "Removing .envrc (should unload)"
+  mv .envrc .envrc.old
+  direnv_eval
+  test_eq "$HELLO" ""
+test_stop
+
 test_start disable
   export DIRENV_DISABLE=1
   direnv_eval
@@ -364,6 +374,19 @@ if has python; then
     fi
   test_stop
 fi
+
+test_start "deleted-envrc"
+  direnv_eval
+  test_eq "$HELLO" "world"
+
+  echo "Deleting .envrc (env should be unloaded on next eval)"
+  cp .envrc .envrc.bak
+  rm .envrc
+  direnv_eval
+  test -z "${HELLO}"
+
+  mv .envrc.bak .envrc
+test_stop
 
 test_start "deleted-envrc"
   direnv_eval

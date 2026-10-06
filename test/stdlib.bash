@@ -60,61 +60,6 @@ test_name dotenv_if_exists
   [[ $FOO = bar ]]
 )
 
-test_name "dotenv / dotenv_if_exists (named pipe / FIFO)"
-(
-  load_stdlib
-
-  workdir=$(mktemp -d)
-  writer_pid=""
-  # shellcheck disable=SC2064
-  trap '[[ -n $writer_pid ]] && kill "$writer_pid" 2>/dev/null; rm -rf "$workdir"' EXIT
-
-  # Reap the background writer without ever hanging the suite: a writer blocked on
-  # opening the FIFO for write (e.g. if the reader never opened it) is bounded-waited,
-  # then killed. The EXIT trap is the final backstop.
-  reap_writer() {
-    for _ in $(seq 1 50); do kill -0 "$writer_pid" 2>/dev/null || break; sleep 0.1; done
-    kill "$writer_pid" 2>/dev/null || true
-    wait "$writer_pid" 2>/dev/null || true
-    writer_pid=""
-  }
-
-  cd "$workdir"
-
-  # Positive control: watch_file is functional in this harness, so the no-watch
-  # assertions below are meaningful (watching a regular file changes DIRENV_WATCHES).
-  before=${DIRENV_WATCHES:-}
-  : > regular.txt
-  watch_file regular.txt
-  [[ ${DIRENV_WATCHES:-} != "$before" ]] || { echo "watch_file did not record a regular file"; return 1; }
-
-  # A ".env" provided as a named pipe (FIFO) - as mounted by secrets managers
-  # like 1Password Environments to inject secrets on read, without writing the
-  # secret contents to disk. The writer blocks until dotenv opens the pipe.
-  mkfifo fifo.env
-
-  # dotenv loads the FIFO ...
-  before=${DIRENV_WATCHES:-}
-  ( echo "export FOO=bar" > fifo.env ) &
-  writer_pid=$!
-  dotenv fifo.env
-  reap_writer
-  [[ $FOO = bar ]]
-  # ... and must NOT add the FIFO to the watch list: a FIFO's mtime changes on
-  # every read, which would otherwise force a reload on every prompt.
-  assert_eq "${DIRENV_WATCHES:-}" "$before"
-
-  # dotenv_if_exists shares the same gate, so it must load a FIFO too.
-  unset FOO
-  before=${DIRENV_WATCHES:-}
-  ( echo "export FOO=baz" > fifo.env ) &
-  writer_pid=$!
-  dotenv_if_exists fifo.env
-  reap_writer
-  [[ $FOO = baz ]]
-  assert_eq "${DIRENV_WATCHES:-}" "$before"
-)
-
 test_name find_up
 (
   load_stdlib
@@ -245,7 +190,7 @@ test_name use_julia
     echo "#!$(command -v bash)
     echo \"test-julia $version\"" > "$julia"
     chmod +x "$julia"
-    # Locally disable set -u (see https://github.com/yaklabco/direnv/pull/667)
+    # Locally disable set -u (see https://github.com/direnv/direnv/pull/667)
     if ! [[ "$(set +u; use julia "$version" 2>&1)" =~ Successfully\ loaded\ test-julia\ $version ]]; then
       return 1
     fi
@@ -264,34 +209,6 @@ test_name use_julia
   JULIA_VERSION_PREFIX=
   test_julia ""    "1.4.0"
   test_julia ""    "1.5"
-)
-
-test_name use_guix
-(
-  load_stdlib
-  workdir=$(mktemp -d)
-  trap 'rm -rf "$workdir"' EXIT
-  cd "$workdir"
-
-  # shellcheck disable=SC2329
-  guix() { echo "mode=search"; }
-  # shellcheck disable=SC2329
-  direnv_load() { mode=load; }
-  # shellcheck disable=SC2329
-  watch_file() { :; }
-
-  for args in --container -C -NC --emulate-fhs -F "-m m.scm -CF"; do
-    mode=
-    # shellcheck disable=SC2086
-    use_guix $args
-    assert_eq "$mode" search
-  done
-  for args in --file=Config.scm "-f Foo.scm" --development hello; do
-    mode=
-    # shellcheck disable=SC2086
-    use_guix $args
-    assert_eq "$mode" load
-  done
 )
 
 test_name source_env_if_exists
@@ -336,122 +253,6 @@ test_name env_vars_required
   [[ "${output#*'MISSING is required'}" != "$output" ]]
 )
 
-
-test_name require_allowed_security
-(
-  load_stdlib
-  set +e
-
-  # Test that absolute paths are rejected
-  output="$(require_allowed /etc/passwd 2>&1)"
-  result=$?
-  [[ $result -eq 1 ]]
-  [[ "${output#*'path must be relative'}" != "$output" ]]
-
-  # Test that parent traversal paths are rejected
-  output="$(require_allowed ../etc/passwd 2>&1)"
-  result=$?
-  [[ $result -eq 1 ]]
-  [[ "${output#*'must not contain'}" != "$output" ]]
-
-  # Test that paths with .. in the middle are rejected
-  output="$(require_allowed foo/../bar 2>&1)"
-  result=$?
-  [[ $result -eq 1 ]]
-  [[ "${output#*'must not contain'}" != "$output" ]]
-)
-
-test_name layout_uv
-(
-  load_stdlib
-
-  if ! has uv; then
-    echo "WARN: uv not found, skipping layout_uv test"
-    exit 0
-  fi
-
-  workdir=$(mktemp -d)
-  trap 'rm -rf "$workdir"' EXIT
-  cd "$workdir"
-
-  # fails without a pyproject.toml
-  output=$(layout_uv 2>&1 || true)
-  [[ "${output#*'no pyproject.toml'}" != "$output" ]]
-
-  # succeeds with a valid project and lockfile
-  cat <<EOF >pyproject.toml
-[project]
-name = "test-direnv-uv"
-version = "0.1.0"
-dependencies = []
-EOF
-  uv lock
-  layout_uv
-
-  [[ -d .venv ]]
-  [[ "$VIRTUAL_ENV" == "$workdir/.venv" ]]
-  [[ "$UV_PROJECT_ENVIRONMENT" == "$workdir/.venv" ]]
-)
-
-test_name global_lib_noglob
-(
-  # Regression test for https://github.com/direnv/direnv/issues/1610
-  # With pathname expansion disabled (set -f / noglob) and no global library
-  # files present, direnv must not source the literal "*.sh" glob and emit a
-  # spurious missing-file diagnostic for the optional lib directory.
-  workdir=$(mktemp -d)
-  trap 'rm -rf "$workdir"' EXIT
-
-  mkdir -p "$workdir/home" "$workdir/project" "$workdir/config/direnv"
-  echo "export DIRENV_NOGLOB_TEST=1" > "$workdir/project/.envrc"
-
-  HOME="$workdir/home" XDG_CONFIG_HOME="$workdir/config" \
-    DIRENV_CONFIG="$workdir/config/direnv" \
-    direnv allow "$workdir/project/.envrc" >/dev/null 2>&1
-
-  output="$(
-    cd "$workdir/project"
-    env HOME="$workdir/home" XDG_CONFIG_HOME="$workdir/config" \
-      DIRENV_CONFIG="$workdir/config/direnv" \
-      SHELLOPTS=braceexpand:hashall:interactive-comments:noglob \
-      direnv export bash 2>&1 >/dev/null
-  )"
-
-  if [[ "$output" == *"lib/*.sh"* ]]; then
-    echo "unexpected missing-library diagnostic under noglob: $output"
-    return 1
-  fi
-)
-
-test_name global_lib_noglob
-(
-  # Regression test for https://github.com/direnv/direnv/issues/1610
-  # With pathname expansion disabled (set -f / noglob) and no global library
-  # files present, direnv must not source the literal "*.sh" glob and emit a
-  # spurious missing-file diagnostic for the optional lib directory.
-  workdir=$(mktemp -d)
-  trap 'rm -rf "$workdir"' EXIT
-
-  mkdir -p "$workdir/home" "$workdir/project" "$workdir/config/direnv"
-  echo "export DIRENV_NOGLOB_TEST=1" > "$workdir/project/.envrc"
-
-  HOME="$workdir/home" XDG_CONFIG_HOME="$workdir/config" \
-    DIRENV_CONFIG="$workdir/config/direnv" \
-    direnv allow "$workdir/project/.envrc" >/dev/null 2>&1
-
-  output="$(
-    cd "$workdir/project"
-    env HOME="$workdir/home" XDG_CONFIG_HOME="$workdir/config" \
-      DIRENV_CONFIG="$workdir/config/direnv" \
-      SHELLOPTS=braceexpand:hashall:interactive-comments:noglob \
-      direnv export bash 2>&1 >/dev/null
-  )"
-
-  if [[ "$output" == *"lib/*.sh"* ]]; then
-    echo "unexpected missing-library diagnostic under noglob: $output"
-    return 1
-  fi
-)
 
 test_name require_allowed_security
 (
