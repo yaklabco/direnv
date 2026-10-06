@@ -1027,9 +1027,7 @@ layout_pixi() {
   fi
   watch_file pixi.lock
   require_allowed pixi.lock
-  local __direnv_out
-  __direnv_out="$(pixi shell-hook "$@")"
-  eval "$__direnv_out"
+  eval "$(pixi shell-hook "$@")"
 }
 
 # Usage: layout python <python_exe>
@@ -1609,8 +1607,6 @@ use_flake() {
   local result
   result="$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
   eval "$result"
-  # refresh the gcroot mtime so age-based GC (e.g. nh clean) keeps it; -h because the target is in the read-only store
-  touch -h "$(direnv_layout_dir)/flake-profile"
   nix --extra-experimental-features "nix-command flakes" profile wipe-history --profile "$(direnv_layout_dir)/flake-profile"
 }
 

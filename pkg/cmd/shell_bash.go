@@ -14,15 +14,13 @@ const bashHook = `
 _direnv_hook() {
   local previous_exit_status=$?;
   local previous_sigint_trap="$(trap -p SIGINT)";
-  vars="$({{.SelfPath}} export bash)";
+  vars="$("{{.SelfPath}}" export bash)";
   trap -- '' SIGINT;
   eval "$vars";
   eval "${previous_sigint_trap:-trap - SIGINT}";
   return $previous_exit_status;
 };
-if [[ ''${BLE_VERSION-} && _ble_version -ge 400 ]]; then
-  blehook PRECMD!="_direnv_hook"
-elif [[ ";${PROMPT_COMMAND[*]:-};" != *";_direnv_hook;"* ]]; then
+if [[ ";${PROMPT_COMMAND[*]:-};" != *";_direnv_hook;"* ]]; then
   if [[ "$(declare -p PROMPT_COMMAND 2>&1)" == "declare -a"* ]]; then
     PROMPT_COMMAND=(_direnv_hook "${PROMPT_COMMAND[@]}")
   else
