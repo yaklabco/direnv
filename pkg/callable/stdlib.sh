@@ -229,7 +229,10 @@ realpath.absolute() {
 
 # Usage: dotenv [<dotenv>]
 #
-# Loads a ".env" file into the current environment
+# Loads a ".env" file into the current environment. The file may be a regular
+# file or a named pipe (FIFO), e.g. one mounted by a secrets manager such as
+# 1Password Environments to inject secrets without writing the secret contents
+# to disk.
 #
 dotenv() {
   local path=${1:-}
@@ -266,31 +269,6 @@ dotenv_if_exists() {
   fi
   local __direnv_out
   __direnv_out="$($direnv dotenv bash "$@")"
-  eval "$__direnv_out"
-}
-
-# Usage: require_allowed <filename> [<filename> ...]
-#
-# Requires that the specified files are approved before loading the .envrc.
-# If any files haven't been approved or have changed since approval, direnv
-# will prompt the user to run `direnv allow` again.
-#
-# This helps prevent supply chain attacks by ensuring that changes to
-# critical files (like pixi.toml, package.json, etc.) require explicit
-# user approval.
-#
-# Example:
-#
-#    require_allowed pixi.toml pixi.lock
-#
-require_allowed() {
-  # Also watch these files for changes
-  watch_file "$@"
-
-  # Check if files are in the allowed-required DB
-  # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  local __direnv_out
-  __direnv_out="$($direnv check-required bash "$PWD/.envrc" "$@")"
   eval "$__direnv_out"
 }
 
@@ -1142,62 +1120,6 @@ layout_pyenv() {
   done
 
   [[ -n "$PYENV_VERSION" ]] && export PYENV_VERSION
-}
-
-# Usage: layout uv [<python>] [<uv-sync-args>...]
-#
-# Similar to layout_python, but uses uv to sync the project's dependencies
-# and activate the virtual environment. Requires a pyproject.toml.
-#
-# An optional Python version or interpreter path can be passed as the first
-# argument (e.g. layout uv 3.12); otherwise uv reads the version from
-# .python-version or pyproject.toml. Any argument starting with "--" and all
-# arguments after the python specifier are passed through to `uv sync`.
-#
-# The virtual environment path can be overridden by setting
-# UV_PROJECT_ENVIRONMENT before calling this layout.
-#
-layout_uv() {
-  # Reload when project config or lockfile change. With --frozen, a pyproject.toml
-  # change triggers an immediate error (lockfile out of sync); a uv.lock change
-  # triggers a re-sync after the user has updated it manually.
-  watch_file .python-version pyproject.toml uv.lock
-
-  if ! has uv; then
-    log_error "uv: command not found. Install from https://docs.astral.sh/uv/"
-    return 1
-  fi
-
-  if [[ ! -f pyproject.toml ]]; then
-    log_error "uv: no pyproject.toml found. Run \`uv init\` to create a project."
-    return 1
-  fi
-
-  local venv_path
-  venv_path="$(expand_path "${UV_PROJECT_ENVIRONMENT:-.venv}")"
-  export UV_PROJECT_ENVIRONMENT="$venv_path"
-
-  local python_arg=()
-  local sync_args=()
-  # uv python specifiers (versions, paths, implementations) never start with
-  # "--", so this distinguishes a python specifier from arguments intended for `uv sync`.
-  if [[ -n "${1:-}" && "${1:-}" != --* ]]; then
-    python_arg=(--python "$1")
-    sync_args=("${@:2}")
-  else
-    sync_args=("$@")
-  fi
-
-  # must use --frozen: we don't want to modify the lock file
-  uv sync --frozen "${python_arg[@]}" "${sync_args[@]}"
-
-  export VIRTUAL_ENV="$venv_path"
-  if [[ -d "$venv_path/bin" ]]; then
-    PATH_add "$venv_path/bin"
-  fi
-  if [[ -d "$venv_path/Scripts" ]]; then
-    PATH_add "$venv_path/Scripts"
-  fi
 }
 
 # Usage: layout ruby
