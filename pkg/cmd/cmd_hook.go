@@ -16,28 +16,42 @@ type HookContext struct {
 	SelfPath string
 }
 
+// BashSelfPath is SelfPath escaped for bash and zsh
+func (ctx HookContext) BashSelfPath() string {
+	return ctx.SelfPath
+}
+
 // CmdHook is `direnv hook $0`
 var CmdHook = &Cmd{
 	Name:   "hook",
 	Desc:   "Used to setup the shell hook",
 	Args:   []string{"SHELL"},
-	Action: actionSimple(cmdHookAction),
+	Action: actionWithConfig(cmdHookAction),
 }
 
 var hookSubCommandRegexp = regexp.MustCompile(`\s+hook`)
 
-func cmdHookAction(_ Env, args []string) (err error) {
+func cmdHookAction(_ Env, args []string, _ *Config) (err error) {
 	var target string
 
 	if len(args) > 1 {
 		target = args[1]
 	}
 
-	selfPath := selfpath.SelfPath(args[0])
+	// Prefer DIRENV_EXE_PATH if set
+	selfPath := os.Getenv("DIRENV_EXE_PATH")
+	if selfPath == "" {
+		selfPath = selfpath.SelfPath(args[0])
+	}
 	firstMatchIndices := hookSubCommandRegexp.FindStringIndex(selfPath)
 	if firstMatchIndices != nil {
 		selfPath = selfPath[:firstMatchIndices[0]]
 	}
+
+	// selfPath, err := os.Executable()
+	// if err != nil {
+	// 	return err
+	// }
 
 	// Convert Windows path if needed
 	selfPath = strings.ReplaceAll(selfPath, "\\", "/")

@@ -168,7 +168,7 @@ Displays the stdlib available in the .envrc execution context.
 
 .TP
 \fBdirenv version\fR
-Prints the version or checks that direnv is older than VERSION_AT_LEAST.
+Prints the version or checks that direnv is no older than VERSION_AT_LEAST.
 
 .SH USAGE
 In some target folder, create an \fB\&.envrc\fR file and add some export(1)
@@ -196,13 +196,18 @@ things.
 Exporting variables by hand is a bit repetitive so direnv provides a set of
 utility functions that are made available in the context of the \fB\&.envrc\fR file.
 Check the direnv-stdlib(1) man page for more details. You can also define your
-own extensions inside \fB$XDG_CONFIG_HOME/direnv/direnvrc\fR or
+own extensions inside \fB$XDG_CONFIG_HOME/yaklabco/direnvrc\fR or
 \fB$XDG_CONFIG_HOME/direnv/lib/*.sh\fR files.
 
 .PP
 Hopefully this is enough to get you started.
 
 .SH ENVIRONMENT
+.TP
+\fBDIRENV_DISABLE\fR
+Set to \fB1\fR or \fBtrue\fR to stop direnv from changing the environment. direnv
+does not revert the changes it already made. Unset it to let direnv continue.
+
 .TP
 \fBXDG_CONFIG_HOME\fR
 Defaults to \fB$HOME/.config\fR\&.
@@ -213,11 +218,11 @@ Defaults to \fB$HOME/.local/share\fR\&.
 
 .SH FILES
 .TP
-\fB$XDG_CONFIG_HOME/direnv/direnv.toml\fR
+\fB$XDG_CONFIG_HOME/yaklabco/direnv.toml\fR
 Direnv configuration. See direnv.toml(1).
 
 .TP
-\fB$XDG_CONFIG_HOME/direnv/direnvrc\fR
+\fB$XDG_CONFIG_HOME/yaklabco/direnvrc\fR
 Bash code loaded before every \fB\&.envrc\fR\&. Good for personal extensions.
 
 .TP
@@ -238,7 +243,7 @@ All bugs or other forms of discussion happen on
 
 .PP
 There is also a wiki available where you can share your usage patterns or
-other tips and tricks 
+other tips and tricks
 \[la]https://github.com/yaklabco/direnv/wiki\[ra]
 
 .PP

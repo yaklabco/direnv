@@ -238,12 +238,15 @@ dotenv() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
-  if ! [[ -f $path ]]; then
+  # reading a FIFO changes its mtime, so watching it reloads on every prompt
+  [[ -p $path ]] || watch_file "$path"
+  if ! [[ -f $path || -p $path ]]; then
     log_error ".env at $path not found"
     return 1
   fi
-  eval "$($direnv dotenv bash "$@")"
+  local __direnv_out
+  __direnv_out="$($direnv dotenv bash "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: dotenv_if_exists [<filename>]
@@ -257,11 +260,13 @@ dotenv_if_exists() {
   elif [[ -d $path ]]; then
     path=$path/.env
   fi
-  watch_file "$path"
-  if ! [[ -f $path ]]; then
+  [[ -p $path ]] || watch_file "$path"
+  if ! [[ -f $path || -p $path ]]; then
     return
   fi
-  eval "$($direnv dotenv bash "$@")"
+  local __direnv_out
+  __direnv_out="$($direnv dotenv bash "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: require_allowed <filename> [<filename> ...]
@@ -284,7 +289,9 @@ require_allowed() {
 
   # Check if files are in the allowed-required DB
   # Pass $PWD/.envrc as the envrc path since we're executing in the .envrc's directory
-  eval "$("$direnv" check-required bash "$PWD/.envrc" "$@")"
+  local __direnv_out
+  __direnv_out="$($direnv check-required bash "$PWD/.envrc" "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: user_rel_path <abs_path>
@@ -437,14 +444,18 @@ env_vars_required() {
 # especially in direnvrc
 #
 watch_file() {
-  eval "$($direnv watch bash "$@")"
+  local __direnv_out
+  __direnv_out="$($direnv watch bash "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: watch_dir <dir>
 #
 # Adds <dir> to the list of dirs that direnv will recursively watch for changes
 watch_dir() {
-  eval "$($direnv watch-dir bash "$1")"
+  local __direnv_out
+  __direnv_out="$($direnv watch-dir bash "$1")"
+  eval "$__direnv_out"
 }
 
 # Usage: _source_up [<filename>] [true|false]
@@ -576,7 +587,9 @@ direnv_load() {
 # Loads the output of `direnv dump` that was stored in a file.
 direnv_apply_dump() {
   local path=$1
-  eval "$($direnv apply_dump "$path")"
+  local __direnv_out
+  __direnv_out="$($direnv apply_dump "$path")"
+  eval "$__direnv_out"
 }
 
 # Usage: PATH_add <path> [<path> ...]
@@ -812,7 +825,9 @@ layout_node() {
 # Sets environment variables from `opam env`.
 layout_opam() {
   export OPAMSWITCH=$PWD
-  eval "$(opam env "$@")"
+  local result
+  result="$(opam env "$@")"
+  eval "$result"
 }
 
 # Usage: layout perl
@@ -836,6 +851,24 @@ layout_perl() {
 # Adds "$PWD/vendor/bin" to the PATH environment variable
 layout_php() {
   PATH_add vendor/bin
+}
+
+# Usage: layout pixi [args]
+#
+# Loads a pixi environment.
+# If no additional arguments are given the `default` environment is loaded.
+# You can pass `-e <env_name>` to load a different environment instead.
+# For supported arguments see `pixi shell-hook --help`.
+layout_pixi() {
+  if [[ ! -f "pixi.toml" ]] && [[ ! -f "pyproject.toml" ]]; then
+    log_error "No pixi.toml or pyproject.toml found.  Use \`pixi init\` to create a project first."
+    exit 2
+  fi
+  watch_file pixi.lock
+  require_allowed pixi.lock
+  local __direnv_out
+  __direnv_out="$(pixi shell-hook "$@")"
+  eval "$__direnv_out"
 }
 
 # Usage: layout python <python_exe>
@@ -1019,7 +1052,9 @@ layout_anaconda() {
     fi
   fi
 
-  eval "$("$conda" shell.bash activate "$env_loc")"
+  local result
+  result="$("$conda" shell.bash activate "$env_loc")"
+  eval "$result"
 }
 
 # Usage: layout pipenv
@@ -1082,6 +1117,44 @@ layout_pyenv() {
   done
 
   [[ -n "$PYENV_VERSION" ]] && export PYENV_VERSION
+}
+
+# Usage: layout uv [<uv-sync-args>...]
+#
+# Similar to layout_python, but syncs the uv project with `uv sync --frozen`
+# and activates its virtual environment. Requires a pyproject.toml.
+#
+# Arguments are passed to `uv sync`. The Python version comes from
+# .python-version, pyproject.toml or UV_PYTHON, e.g. `UV_PYTHON=3.12 layout uv`.
+# The virtual environment path can be overridden with UV_PROJECT_ENVIRONMENT.
+#
+layout_uv() {
+  watch_file .python-version pyproject.toml uv.lock
+
+  if ! has uv; then
+    log_error "uv: command not found. Install from https://docs.astral.sh/uv/"
+    return 1
+  fi
+
+  if [[ ! -f pyproject.toml ]]; then
+    log_error "uv: no pyproject.toml found. Run \`uv init\` to create a project."
+    return 1
+  fi
+
+  local venv_path
+  venv_path=$(expand_path "${UV_PROJECT_ENVIRONMENT:-.venv}")
+  export UV_PROJECT_ENVIRONMENT=$venv_path
+
+  # never modify uv.lock from an .envrc
+  uv sync --frozen "$@" || return
+
+  export VIRTUAL_ENV=$venv_path
+  if [[ -d "$venv_path/bin" ]]; then
+    PATH_add "$venv_path/bin"
+  fi
+  if [[ -d "$venv_path/Scripts" ]]; then
+    PATH_add "$venv_path/Scripts"
+  fi
 }
 
 # Usage: layout ruby
@@ -1186,7 +1259,9 @@ use_julia() {
 # Loads rbenv which add the ruby wrappers available on the PATH.
 #
 use_rbenv() {
-  eval "$(rbenv init -)"
+  local result
+  result="$(rbenv init -)"
+  eval "$result"
 }
 
 # Usage: rvm [...]
@@ -1323,8 +1398,7 @@ use_nix() {
     ["TEMPDIR"]=${TEMPDIR:-__UNSET__}
     ["terminfo"]=${terminfo:-__UNSET__}
   )
-  # shellcheck disable=SC2086
-  direnv_load nix-shell --show-trace "$@" --run "$(join_args $direnv dump)"
+  direnv_load nix-shell --show-trace "$@" --run "$(join_args "$direnv" dump)"
   for key in "${!values_to_restore[@]}"; do
     local value=${values_to_restore[$key]}
     if [[ $value == __UNSET__ ]]; then
@@ -1353,7 +1427,11 @@ use_flake() {
   watch_file flake.nix
   watch_file flake.lock
   mkdir -p "$(direnv_layout_dir)"
-  eval "$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
+  local result
+  result="$(nix --extra-experimental-features "nix-command flakes" print-dev-env --profile "$(direnv_layout_dir)/flake-profile" "$@")"
+  eval "$result"
+  # refresh the gcroot mtime so age-based GC (e.g. nh clean) keeps it; -h because the target is in the read-only store
+  touch -h "$(direnv_layout_dir)/flake-profile"
   nix --extra-experimental-features "nix-command flakes" profile wipe-history --profile "$(direnv_layout_dir)/flake-profile"
 }
 
@@ -1362,7 +1440,7 @@ use_flake() {
 # Load environment variables from `flox activate`. By default uses the .flox
 # directory in the current directory.
 #
-# You can specify a FloxHub environment with '--reference=<owner>/<name>' 
+# You can specify a FloxHub environment with '--reference=<owner>/<name>'
 # or `-r=<owner>/<name>`, where <owner>/<name>
 # is the FloxHub environment name (e.g. `use_flox '--reference=myorg/env`).
 #
@@ -1411,8 +1489,7 @@ function use_flox() {
         return 1
     fi
 
-    # shellcheck disable=SC2086
-    direnv_load flox activate "${args[@]}" -- $direnv dump
+    direnv_load flox activate "${args[@]}" -c "$direnv dump"
 
     if [[ ${#args[@]} -eq 0 ]]; then
         watch_dir "$flox_dir/env/"
@@ -1434,15 +1511,36 @@ function use_flox() {
 # If a channels.scm is available, `guix time-machine -C channels.scm`
 # is automatically invoked before creating the shell.
 use_guix() {
+    local arg
     watch_file guix.scm
     watch_file manifest.scm
     watch_file channels.scm
+
+    # Containers cannot run the host direnv binary, so keep using --search-paths.
+    for arg in "$@"; do
+	case "$arg" in
+	--container | --emulate-fhs | -[CF]* | -[!-]*[CF]*)
+	    local result
+	    if [ -f channels.scm ]
+	    then
+		log_status "Using Guix version from channels.scm"
+		result="$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
+	    else
+		result="$(guix shell "$@" --search-paths)"
+	    fi
+	    eval "$result"
+	    return
+	    ;;
+	esac
+    done
+
+    # direnv_load needs this path preserved so direnv dump can write its output.
     if [ -f channels.scm ]
     then
 	log_status "Using Guix version from channels.scm"
-	eval "$(guix time-machine -C channels.scm -- shell "$@" --search-paths)"
+	direnv_load guix time-machine -C channels.scm -- shell "$@" --preserve=^DIRENV_DUMP_FILE_PATH$ -- "$direnv" dump
     else
-	eval "$(guix shell "$@" --search-paths)"
+	direnv_load guix shell "$@" --preserve=^DIRENV_DUMP_FILE_PATH$ -- "$direnv" dump
     fi
 }
 
@@ -1461,7 +1559,7 @@ use_vim() {
 
 # Usage: direnv_version <version_at_least>
 #
-# Checks that the direnv version is at least old as <version_at_least>.
+# Checks that the direnv version is no older than <version_at_least>.
 direnv_version() {
   $direnv version "$@"
 }
@@ -1537,6 +1635,10 @@ __main__() {
 
   # load direnv libraries
   for lib in "$direnv_config_dir/lib/"*.sh; do
+    # Skip the unexpanded glob. nullglob only drops a non-matching pattern
+    # while pathname expansion is enabled; under `set -f` (noglob) the literal
+    # "*.sh" survives and would otherwise be sourced as a missing file.
+    [[ -f $lib ]] || continue
     # shellcheck disable=SC1090
     source "$lib"
   done
