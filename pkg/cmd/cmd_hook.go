@@ -18,7 +18,7 @@ type HookContext struct {
 
 // BashSelfPath is SelfPath escaped for bash and zsh
 func (ctx HookContext) BashSelfPath() string {
-	return BashEscape(ctx.SelfPath)
+	return ctx.SelfPath
 }
 
 // CmdHook is `direnv hook $0`
