@@ -31,7 +31,7 @@ var CmdHook = &Cmd{
 
 var hookSubCommandRegexp = regexp.MustCompile(`\s+hook`)
 
-func cmdHookAction(_ Env, args []string, config *Config) (err error) {
+func cmdHookAction(_ Env, args []string, _ *Config) (err error) {
 	var target string
 
 	if len(args) > 1 {
