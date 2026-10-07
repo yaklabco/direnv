@@ -39,7 +39,7 @@ func TestPwshHookQuotesSelfPath(t *testing.T) {
 	if err := tmpl.Execute(&out, HookContext{SelfPath: "C:/Users/Jane O'Doe/$x/direnv.exe"}); err != nil {
 		t.Fatal(err)
 	}
-	expected := `$export = (& 'C:/Users/Jane O''Doe/$x/direnv.exe' export pwsh) -join [Environment]::NewLine;`
+	expected := `$export = (& C:/Users/Jane O''Doe/$x/direnv.exe export pwsh) -join [Environment]::NewLine;`
 	if !strings.Contains(out.String(), expected) {
 		t.Errorf("expected hook output to contain %q, got:\n%s", expected, out.String())
 	}
