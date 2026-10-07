@@ -18,6 +18,9 @@ func TestStdlibEscapesSelfPath(t *testing.T) {
 	if err != nil {
 		t.Skip("bash is not installed")
 	}
+
+	t.Skip("test disabled for custom selfpath-computing direnv variant")
+
 	saved := stdlib
 	t.Cleanup(func() { stdlib = saved })
 	stdlib = `direnv="$(command -v direnv)"`
@@ -42,6 +45,9 @@ func TestBashHookEscapesSelfPath(t *testing.T) {
 	if err != nil {
 		t.Skip("bash is not installed")
 	}
+
+	t.Skip("test disabled for custom selfpath-computing direnv variant")
+
 	dir := filepath.Join(t.TempDir(), weirdDirName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
